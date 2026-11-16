@@ -1,0 +1,37 @@
+
+name: Prepare Android SDK
+
+on:
+  workflow_dispatch:
+
+jobs:
+  prepare:
+    runs-on: windows-latest
+
+    steps:
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v4
+        with:
+          packages: 'platform-tools platforms;android-35 build-tools;35.0.0'
+
+      - name: Locate SDK
+        id: sdk-path
+        shell: pwsh
+        run: |
+          "sdk_path=$env:ANDROID_HOME" >> $env:GITHUB_OUTPUT
+          Write-Host "Android SDK: $env:ANDROID_HOME"
+
+      - name: Upload Android SDK
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-sdk-windows
+          path: ${{ steps.sdk-path.outputs.sdk_path }}
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 7
