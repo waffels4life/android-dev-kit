@@ -78,7 +78,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: harmony-gradle-cache-windows
-          path: C:\Users\runneradmin\.gradle\caches
+          path: D:\a\.gradle\caches
           if-no-files-found: error
           compression-level: 1
           retention-days: 7
