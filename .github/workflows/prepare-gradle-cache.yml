@@ -20,59 +20,91 @@ jobs:
           gradle-version: '8.13'
           cache-disabled: true
 
-      - name: Resolve Android Gradle Plugin
+      - name: Create Harmony project
         shell: pwsh
         run: |
-          $probe = Join-Path $env:RUNNER_TEMP 'harmony-gradle-probe'
-          New-Item -ItemType Directory -Path $probe -Force | Out-Null
+          New-Item -ItemType Directory -Path app -Force | Out-Null
 
           @'
           pluginManagement {
               repositories {
-                  google()
+                  google {
+                      content {
+                          includeGroupByRegex("com\\.android.*")
+                          includeGroupByRegex("com\\.google.*")
+                          includeGroupByRegex("androidx.*")
+                      }
+                  }
                   mavenCentral()
                   gradlePluginPortal()
               }
           }
-          rootProject.name = 'harmony-gradle-probe'
-          '@ | Set-Content "$probe/settings.gradle" -Encoding utf8
+
+          dependencyResolutionManagement {
+              repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
+              repositories {
+                  google()
+                  mavenCentral()
+              }
+          }
+
+          rootProject.name = "Harmony"
+          include ':app'
+          '@ | Set-Content settings.gradle -Encoding utf8
 
           @'
           plugins {
               id 'com.android.application' version '8.13.2' apply false
           }
-          '@ | Set-Content "$probe/build.gradle" -Encoding utf8
+          '@ | Set-Content build.gradle -Encoding utf8
 
-          Push-Location $probe
-          try {
-              gradle help --refresh-dependencies --no-daemon
-              if ($LASTEXITCODE -ne 0) {
-                  throw "Gradle dependency resolution failed."
+          @'
+          plugins {
+              id 'com.android.application'
+          }
+
+          android {
+              namespace 'com.harmony'
+              compileSdk 35
+
+              defaultConfig {
+                  applicationId "com.harmony"
+                  minSdk 26
+                  targetSdk 35
+                  versionCode 1
+                  versionName "1.0"
+                  testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+              }
+
+              buildTypes {
+                  release {
+                      minifyEnabled false
+                      proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+                  }
+              }
+
+              compileOptions {
+                  sourceCompatibility JavaVersion.VERSION_21
+                  targetCompatibility JavaVersion.VERSION_21
               }
           }
-          finally {
-              Pop-Location
-          }
+          '@ | Set-Content app/build.gradle -Encoding utf8
 
-      - name: Locate Gradle cache
+          @'
+          org.gradle.jvmargs=-Xmx2048m -Dfile.encoding=UTF-8
+          android.useAndroidX=true
+          kotlin.code.style=official
+          android.nonTransitiveRClass=true
+          '@ | Set-Content gradle.properties -Encoding utf8
+
+      - name: Resolve Harmony dependencies
         shell: pwsh
         run: |
-          $gradleHome = if ($env:GRADLE_USER_HOME) {
-              $env:GRADLE_USER_HOME
-          } else {
-              Join-Path $env:USERPROFILE ".gradle"
+          gradle help --no-daemon
+
+          if ($LASTEXITCODE -ne 0) {
+              throw "Harmony dependency resolution failed."
           }
-
-          $cachePath = Join-Path $gradleHome "caches"
-
-          Write-Host "Gradle Home: $gradleHome"
-          Write-Host "Cache Path: $cachePath"
-
-          if (-not (Test-Path $cachePath)) {
-              throw "Gradle cache directory not found: $cachePath"
-          }
-
-          Get-ChildItem $cachePath -Force
 
       - name: Upload Gradle dependency cache
         uses: actions/upload-artifact@v4
