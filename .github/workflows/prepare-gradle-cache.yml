@@ -100,6 +100,14 @@ jobs:
                   targetCompatibility JavaVersion.VERSION_21
               }
           }
+
+          dependencies {
+              def media3Version = "1.11.1"
+
+              implementation "androidx.media3:media3-exoplayer:$media3Version"
+              implementation "androidx.media3:media3-session:$media3Version"
+              implementation "androidx.media3:media3-common:$media3Version"
+          }
           '@ | Set-Content app/build.gradle -Encoding utf8
 
           @'
@@ -123,6 +131,17 @@ jobs:
 
           if ($LASTEXITCODE -ne 0) {
               throw "Harmony build failed."
+          }
+
+      - name: Verify Media3 dependencies
+        shell: pwsh
+        env:
+          GRADLE_USER_HOME: D:\a\gradle-user-home
+        run: |
+          gradle :app:dependencies --configuration debugRuntimeClasspath --no-daemon
+
+          if ($LASTEXITCODE -ne 0) {
+              throw "Media3 dependency verification failed."
           }
 
       - name: Upload Gradle dependency cache
